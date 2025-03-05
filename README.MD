@@ -35,5 +35,5 @@ Este repositório possui os arquivos necessários para subir a infraestrutura do
 ### 4. Como executar/instalar
 - Comece a instalação pelo ./terraform/modules/backend/s3-state.tf 
   - terraform init / terraform apply
-- Após a subida do s3, alterar para a sua chave na linha 14 do arquivo "main.tf" e instalar os arquivos em ./terraform/*
+- Após a subida do s3, alterar para a sua chave na linha 59 do arquivo "main.tf" e instalar os arquivos em ./terraform/*
  - terraform init / terraform apply
