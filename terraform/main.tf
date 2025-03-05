@@ -54,7 +54,7 @@ resource "aws_security_group" "app_sg" {
 
 # Criando a instância EC2 e associando ao Security Group
 resource "aws_instance" "app_server" {
-  ami           = "ami-08d70e59c07c61a3a"
+  ami           = "ami-0e1bed4f06a3b463d"
   instance_type = "t2.micro"
   key_name      = "eduardo-silvestre" #ssh-key-name  
 
@@ -70,11 +70,12 @@ resource "aws_instance" "app_server" {
               # Docker
               curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
               sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
-              sudo apt-get update -y
-              sudo apt-get install -y docker-ce
+              sudo apt update -y
+              sudo apt install -y docker-ce
 
               sudo usermod -aG docker ubuntu
-
+              sudo usermod -aG docker $USER
+              
               # Kind
               curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.11.1/kind-linux-amd64
               chmod +x ./kind
@@ -84,6 +85,10 @@ resource "aws_instance" "app_server" {
               curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
               chmod +x kubectl
               sudo mv kubectl /usr/local/bin/
+
+              curl https://get.helm.sh/helm-v3.9.0-linux-amd64.tar.gz -o helm-v3.9.0-linux-amd64.tar.gz
+              tar -zxvf helm-v3.9.0-linux-amd64.tar.gz
+              sudo mv linux-amd64/helm /usr/local/bin/helm
 
               # cluster Kind
               kind create cluster
@@ -98,6 +103,6 @@ resource "aws_instance" "app_server" {
               EOF
 
   tags = {
-    Name = "terraform-ec2-nginx"
+    Name = "terraform-ec2"
   }
 }
