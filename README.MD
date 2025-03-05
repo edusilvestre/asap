@@ -26,14 +26,24 @@ Este repositório possui os arquivos necessários para subir a infraestrutura do
 ### 2. Quais as dificuldades encontradas
 - Na criação do S3 não é possível já configurar o "backend" para versionamento dos states do terraform, foi necessário configurar em duas etapas
 - A correção da pasta "chart" foi em cima de identações, que gerou uma certa dificuldade de encontrá-los
+- Migrar os arquivos do Helm para a EC2 sem estar em um diretório "fixo" na web
 
 ### 3. Pontos de melhorias
 - O security Group/EC2 está aceitando acesso externo público e utilizando algumas portas padrão (22 e 80/8080), gerando vulnerabilidades dos recursos
 - O Nginx não possui nenhuma configuração adicional de segurança, estando suscetível a ataques
 - Automatizar a criação do S3 já com o "backend" de versionamento via script, rodando as duas etapas automaticamente sem intervenção manual
+- Subir os arquivos do Helm na web para não precisar utilizar o SCP
 
 ### 4. Como executar/instalar
 - Comece a instalação pelo ./terraform/modules/backend/s3-state.tf 
-  - terraform init / terraform apply
+    - terraform init
+    - terraform apply
 - Após a subida do s3, alterar para a sua chave na linha 59 do arquivo "main.tf" e instalar os arquivos em ./terraform/*
- - terraform init / terraform apply
+   - terraform init
+   - terraform apply
+- Assim que a criação dos recursos finalizar, enviar os arquivos do chart/helm para a EC2, exemplo: 
+    - scp -i sua-chave.pem chart.zip ubuntu@54.165.181.139:/home/ubuntu
+- Criar o cluster do kind: 
+    - sudo kind create cluster --name nome-do-cluster
+- Executar a instalação do helm: 
+    - helm install /home/ubuntu/. --generate-name
