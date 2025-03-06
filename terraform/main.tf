@@ -7,35 +7,46 @@ terraform {
       version = "~> 4.16"
     }
   }
-
-  #Versionamento State
-  backend "s3" {
-    bucket  = "terraform-state-asap-eduardo" # Nome do bucket S3 (crie no AWS antes)
-    key     = "terraform.tfstate"
-    region  = "us-east-1"
-    encrypt = true # Habilita criptografia
-  }
 }
 
-#onde o recurso está sendo criado
+# Provedor AWS
 provider "aws" {
   region = "us-east-1"
 }
 
-# Criando um Security Group para permitir tráfego na porta desejada
+# Gerar chave SSH privada
+resource "tls_private_key" "my_key" {
+  algorithm = "RSA"
+  rsa_bits  = 4096
+}
+
+# Criar a chave pública no AWS
+resource "aws_key_pair" "generated_key" {
+  key_name   = "terraform-generated-key"
+  public_key = tls_private_key.my_key.public_key_openssh
+}
+
+# Salvar a chave privada no diretório local
+resource "local_file" "private_key" {
+  content         = tls_private_key.my_key.private_key_pem
+  filename        = "${path.module}/terraform-generated-key.pem"
+  file_permission = "0400" # Define permissões seguras para a chave
+}
+
+# Criar Security Group para a EC2
 resource "aws_security_group" "app_sg" {
   name        = "app_sg"
   description = "Allow traffic on specific port"
 
-  # Regra para permitir entrada (ingress)
+  # Permitir tráfego na porta 8080
   ingress {
-    from_port   = 8080 # Altere para a porta que deseja expor
-    to_port     = 8080 # Altere para a porta que deseja expor
+    from_port   = 8080
+    to_port     = 8080
     protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"] # Permite acesso de qualquer IP (modifique para mais segurança)
+    cidr_blocks = ["0.0.0.0/0"]
   }
 
-  # Permitir acesso SSH (para debug)
+  # Permitir acesso SSH (22)
   ingress {
     from_port   = 22
     to_port     = 22
@@ -43,7 +54,7 @@ resource "aws_security_group" "app_sg" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  # Regra para permitir saída (egress) para qualquer destino
+  # Regras de saída (liberar tudo)
   egress {
     from_port   = 0
     to_port     = 0
@@ -52,16 +63,15 @@ resource "aws_security_group" "app_sg" {
   }
 }
 
-# Criando a instância EC2 e associando ao Security Group
+# Criar instância EC2 e associar à chave gerada
 resource "aws_instance" "app_server" {
   ami           = "ami-0e1bed4f06a3b463d"
   instance_type = "t2.micro"
-  key_name      = "eduardo-silvestre" #ssh-key-name  
+  key_name      = aws_key_pair.generated_key.key_name # Usa a chave gerada
 
-  # Associando ao Security Group criado
   vpc_security_group_ids = [aws_security_group.app_sg.id]
 
-  # Script de inicialização da instância para instalar e configurar o NGINX
+  # Script de inicialização da instância
   user_data = <<-EOF
               #!/bin/bash
               sudo apt update -y
@@ -95,7 +105,7 @@ resource "aws_instance" "app_server" {
               
               # Modificando todas as ocorrências da porta 80 para 8080
               sudo sed -i 's/listen 80 default_server;/listen 8080 default_server;/g' /etc/nginx/sites-available/default
-              sudo sed -i 's/listen \\[::\\]:80 default_server;/listen \\[::\\]:8080 default_server;/g' /etc/nginx/sites-available/default  #analisar se a mudança funcionou
+              sudo sed -i 's/listen \\[::\\]:80 default_server;/listen \\[::\\]:8080 default_server;/g' /etc/nginx/sites-available/default
 
               # Reiniciar o Nginx para aplicar mudanças
               sudo systemctl restart nginx
